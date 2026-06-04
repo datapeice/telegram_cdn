@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Hosting Bot Dashboard</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-color: #030712;
+            --panel-bg: rgba(17, 24, 39, 0.7);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --accent-primary: #8b5cf6;
+            --accent-primary-hover: #7c3aed;
+            --accent-secondary: #6366f1;
+            --accent-glow: rgba(139, 92, 246, 0.15);
+            --danger-color: #ef4444;
+            --danger-hover: #dc2626;
+            --success-color: #10b981;
+            --card-glow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.1) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.1) 0px, transparent 50%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 2rem 1rem;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            display: flex;
+            flex-direction: column;
+            gap: 2.5rem;
+        }
+
+        /* Header section */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .logo-section h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #a78bfa, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.03em;
+        }
+
+        .logo-section p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-top: 0.25rem;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .stat-card {
+            background: var(--panel-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 1.75rem;
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            box-shadow: var(--card-glow);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(139, 92, 246, 0.25);
+            box-shadow: 0 12px 40px 0 rgba(139, 92, 246, 0.1);
+        }
+
+        .stat-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 15px;
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(99, 102, 241, 0.2));
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+        }
+
+        .stat-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            font-family: 'Outfit', sans-serif;
+            color: #ffffff;
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Video List Section */
+        .section-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: #ffffff;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-title::before {
+            content: '';
+            display: inline-block;
+            width: 4px;
+            height: 24px;
+            background: linear-gradient(to bottom, var(--accent-primary), var(--accent-secondary));
+            border-radius: 2px;
+        }
+
+        .videos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+            gap: 2rem;
+        }
+
+        .video-card {
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--card-glow);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .video-card:hover {
+            transform: translateY(-6px);
+            border-color: rgba(139, 92, 246, 0.3);
+            box-shadow: 0 20px 40px 0 rgba(0, 0, 0, 0.5), 0 0 30px 0 rgba(139, 92, 246, 0.08);
+        }
+
+        .video-player-container {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #000000;
+            border-bottom: 1px solid var(--border-color);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .video-player-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .video-info {
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            flex-grow: 1;
+        }
+
+        .video-meta-top {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .video-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #ffffff;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .video-date-size {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .command-box {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .command-label {
+            font-size: 0.75rem;
+            color: var(--accent-primary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .command-input-group {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .command-text {
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #e2e8f0;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 0.85rem;
+            width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            user-select: all;
+            padding: 0.25rem 0;
+        }
+
+        .btn-copy {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border: none;
+            border-radius: 8px;
+            color: #ffffff;
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 0.5rem 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .btn-copy:hover {
+            opacity: 0.9;
+            transform: scale(1.03);
+        }
+
+        .btn-copy:active {
+            transform: scale(0.97);
+        }
+
+        .video-actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: auto;
+            align-items: center;
+        }
+
+        .btn-delete {
+            width: 100%;
+            background: linear-gradient(135deg, #ef4444, #f43f5e);
+            border: none;
+            border-radius: 12px;
+            color: #ffffff;
+            font-size: 0.9rem;
+            font-weight: 600;
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+        }
+
+        .btn-delete:hover {
+            background: linear-gradient(135deg, #dc2626, #e11d48);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(239, 68, 68, 0.35);
+        }
+
+        .btn-delete:active {
+            transform: translateY(0);
+        }
+
+        .btn-download {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            color: var(--text-main);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            padding: 0.75rem 1rem;
+            text-align: center;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 50px;
+        }
+
+        .btn-download:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Empty state */
+        .empty-state {
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px dashed var(--border-color);
+            border-radius: 24px;
+            padding: 4rem 2rem;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1.25rem;
+            box-shadow: var(--card-glow);
+        }
+
+        .empty-icon {
+            font-size: 3.5rem;
+            filter: drop-shadow(0 0 10px rgba(139, 92, 246, 0.3));
+        }
+
+        .empty-state h3 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .empty-state p {
+            color: var(--text-muted);
+            max-width: 400px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: #ffffff;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            transform: translateY(150%);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 1000;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+        }
+
+        @media (max-width: 640px) {
+            body {
+                padding: 1rem 0.5rem;
+            }
+
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+
+            .logo-section h1 {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="logo-section">
+                <h1>Video Hosting Bot</h1>
+                <p>Веб-панель управления видеофайлами для мода SLCamera</p>
+            </div>
+        </header>
+
+        <!-- Stats Overview -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">📹</div>
+                <div class="stat-info">
+                    <span class="stat-value" th:text="${totalVideos}">0</span>
+                    <span class="stat-label">Всего роликов</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">💾</div>
+                <div class="stat-info">
+                    <span class="stat-value" th:text="${totalSize}">0.00 MB</span>
+                    <span class="stat-label">Занято на диске</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Video Listing -->
+        <div>
+            <h2 class="section-title">Хосты видеофайлов</h2>
+
+            <!-- Grid of Cards (if videos present) -->
+            <div class="videos-grid" th:if="${not #lists.isEmpty(videos)}">
+                <div class="video-card" th:each="video : ${videos}">
+                    <!-- Custom Video Player -->
+                    <div class="video-player-container">
+                        <video controls preload="metadata">
+                            <source th:src="${video.directUrl}" type="video/mp4">
+                            Ваш браузер не поддерживает встроенный плеер.
+                        </video>
+                    </div>
+
+                    <!-- Details and Actions -->
+                    <div class="video-info">
+                        <div class="video-meta-top">
+                            <h3 class="video-title" th:title="${video.originalFilename}" th:text="${video.originalFilename}">video.mp4</h3>
+                            <div class="video-date-size">
+                                <span th:text="${#temporals.format(video.createdAt, 'dd.MM.yyyy HH:mm')}">01.01.2025 12:00</span>
+                                <span th:text="${@dashboardController.formatSize(video.fileSize)}">10.5 MB</span>
+                            </div>
+                        </div>
+
+                        <!-- Command block -->
+                        <div class="command-box">
+                            <span class="command-label">Команда для SLCamera</span>
+                            <div class="command-input-group">
+                                <input type="text" class="command-text" readonly 
+                                       th:value="'/camera video @a ' + ${video.directUrl}">
+                                <button class="btn-copy" onclick="copyCommand(this)">Копировать</button>
+                            </div>
+                        </div>
+
+                        <!-- Actions (Download + Delete) -->
+                        <div class="video-actions">
+                            <a th:href="${video.directUrl}" download class="btn-download" title="Скачать файл">💾</a>
+                            <form th:action="@{/delete/{id}(id=${video.id})}" method="POST" style="width: 100%;" 
+                                  onsubmit="return confirm('Вы уверены, что хотите удалить этот хост видео? Это действие необратимо и файл будет удален с диска.');">
+                                <button type="submit" class="btn-delete">
+                                    <span>🗑️ Удалить хост</span>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Empty State (if no videos) -->
+            <div class="empty-state" th:if="${#lists.isEmpty(videos)}">
+                <span class="empty-icon">📁</span>
+                <h3>Хостинг пуст</h3>
+                <p>Пришлите видеоролик в Telegram-бот, и он автоматически появится здесь вместе с прямой ссылкой для стриминга.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast UI -->
+    <div id="toast" class="toast">
+        <span>📋 Команда успешно скопирована!</span>
+    </div>
+
+    <script>
+        function copyCommand(button) {
+            const inputGroup = button.parentElement;
+            const input = inputGroup.querySelector('.command-text');
+            
+            // Select text
+            input.select();
+            input.setSelectionRange(0, 99999); // For mobile devices
+            
+            // Copy to clipboard
+            navigator.clipboard.writeText(input.value).then(() => {
+                showToast();
+                
+                // Visual response on button
+                const originalText = button.textContent;
+                button.textContent = 'Готово!';
+                button.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.style.background = '';
+                }, 2000);
+            }).catch(err => {
+                console.error('Ошибка копирования: ', err);
+            });
+        }
+
+        function showToast() {
+            const toast = document.getElementById('toast');
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
