@@ -24,7 +24,7 @@ services:
     container_name: videohosting_app
     restart: always
     ports:
-      - "8080:8080"
+      - "8888:8080"
     env_file:
       - .env
     environment:
