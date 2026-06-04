@@ -118,15 +118,19 @@ public class VideoStorageService {
     private boolean runFFmpegTranscode(File input, File output) {
         log.info("Running FFmpeg transcode (H.264, AAC, FastStart) on: {}", input.getAbsolutePath());
 
-        // Command: ffmpeg -y -i <input> -map 0:v:0 -map 0:a? -c:v libx264 -pix_fmt yuv420p -c:a aac -b:a 128k -movflags +faststart <output>
+        // Command: ffmpeg -y -i <input> -map 0:v:0 -map 0:a? -c:v libx264 -profile:v baseline -bf 0 -pix_fmt yuv420p -c:a aac -ar 44100 -ac 2 -b:a 128k -movflags +faststart <output>
         ProcessBuilder processBuilder = new ProcessBuilder(
                 "ffmpeg", "-y",
                 "-i", input.getAbsolutePath(),
                 "-map", "0:v:0",
                 "-map", "0:a?",
                 "-c:v", "libx264",
+                "-profile:v", "baseline",
+                "-bf", "0",
                 "-pix_fmt", "yuv420p",
                 "-c:a", "aac",
+                "-ar", "44100",
+                "-ac", "2",
                 "-b:a", "128k",
                 "-movflags", "+faststart",
                 output.getAbsolutePath()

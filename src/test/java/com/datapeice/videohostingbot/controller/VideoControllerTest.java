@@ -81,4 +81,14 @@ public class VideoControllerTest {
         mockMvc.perform(get("/videos/non-existent-file.mp4"))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    public void testDashboardRendering() throws Exception {
+        mockMvc.perform(get("/"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("index"))
+                .andExpect(model().attributeExists("videos"))
+                .andExpect(model().attributeExists("totalVideos"))
+                .andExpect(model().attributeExists("totalSize"));
+    }
 }
