@@ -1,5 +1,7 @@
 package com.datapeice.videohostingbot.service;
 
+import com.datapeice.videohostingbot.model.Video;
+import com.datapeice.videohostingbot.repository.VideoRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +19,7 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -29,6 +32,7 @@ public class TelegramBotService {
     private String whitelistStr;
 
     private final VideoStorageService videoStorageService;
+    private final VideoRepository videoRepository;
     private final ObjectMapper objectMapper;
     private final RestTemplate restTemplate;
     
@@ -37,8 +41,9 @@ public class TelegramBotService {
     private Thread pollingThread;
 
     @Autowired
-    public TelegramBotService(VideoStorageService videoStorageService) {
+    public TelegramBotService(VideoStorageService videoStorageService, VideoRepository videoRepository) {
         this.videoStorageService = videoStorageService;
+        this.videoRepository = videoRepository;
         this.objectMapper = new ObjectMapper();
         this.restTemplate = new RestTemplate();
     }
@@ -174,18 +179,32 @@ public class TelegramBotService {
         String text = message.path("text").asText("");
         if (text.startsWith("/start")) {
             sendTextMessage(chatId, "<b>Привет!</b> 👋\n\n" +
-                    "Я бот для хостинга видео под <b>SLCamera</b>.\n" +
+                    "Я бот для хостинга видео.\n" +
                     "Просто пришли мне любой видеоролик (как видео или файл), " +
                     "и я сделаю его доступным по прямой ссылке, оптимизированным для стриминга!\n\n" +
-                    "<i>Все видео будут транскодированы в формат MP4 (H.264/AAC) с FastStart заголовками " +
-                    "для моментального воспроизведения со звуком на сервере StoryLegends.</i>");
+                    "<i>Все видео будут автоматически подготовлены для моментального воспроизведения со звуком.</i>");
         } else {
             sendTextMessage(chatId, "Пришли мне видеоролик, чтобы загрузить его на хостинг. 🎥");
         }
     }
 
     private void processVideoUpload(long chatId, String fileId, String fileName) {
-        sendTextMessage(chatId, "⏳ Видео получено! Скачиваю и оптимизирую для SLCamera...");
+        // Check if this video has already been uploaded and processed
+        Optional<Video> existingVideo = videoRepository.findByTelegramFileId(fileId);
+        if (existingVideo.isPresent()) {
+            Video video = existingVideo.get();
+            String responseText = "✅ <b>Это видео уже загружено на хостинг!</b>\n\n" +
+                    "<b>Файл:</b> <code>" + escapeHtml(video.getOriginalFilename()) + "</code>\n" +
+                    "<b>Размер:</b> " + formatSize(video.getFileSize()) + "\n\n" +
+                    "🔗 <b>Прямая ссылка:</b>\n<code>" + video.getDirectUrl() + "</code>\n\n" +
+                    "🎮 <b>Команда для запуска:</b>\n" +
+                    "<code>/camera video @a " + video.getDirectUrl() + "</code>\n\n" +
+                    "<i>Вы можете управлять этим файлом через веб-панель.</i>";
+            sendTextMessage(chatId, responseText);
+            return;
+        }
+
+        sendTextMessage(chatId, "⏳ Видео получено! Скачиваю и оптимизирую для стриминга...");
 
         try {
             // 1. Get file info from Telegram
@@ -234,7 +253,7 @@ public class TelegramBotService {
                     "<b>Файл:</b> <code>" + escapeHtml(video.getOriginalFilename()) + "</code>\n" +
                     "<b>Размер:</b> " + formatSize(video.getFileSize()) + "\n\n" +
                     "🔗 <b>Прямая ссылка:</b>\n<code>" + video.getDirectUrl() + "</code>\n\n" +
-                    "🎮 <b>Команда для запуска в Minecraft (SLCamera):</b>\n" +
+                    "🎮 <b>Команда для запуска:</b>\n" +
                     "<code>/camera video @a " + video.getDirectUrl() + "</code>\n\n" +
                     "<i>Команда скопируется при нажатии на неё (на телефоне) или при выделении. Вы можете управлять файлами через веб-панель.</i>";
 
