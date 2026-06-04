@@ -40,15 +40,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    networks:
-      - default
-      - npm_network
-
-networks:
-  default:
-  npm_network:
-    external: true
-    name: npm_network
 
 volumes:
   postgres_data:
