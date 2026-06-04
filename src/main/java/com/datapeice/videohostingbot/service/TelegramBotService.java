@@ -25,10 +25,14 @@ public class TelegramBotService {
     @Value("${bot.token:}")
     private String botToken;
 
+    @Value("${bot.whitelist:}")
+    private String whitelistStr;
+
     private final VideoStorageService videoStorageService;
     private final ObjectMapper objectMapper;
     private final RestTemplate restTemplate;
     
+    private final java.util.Set<Long> whitelist = new java.util.HashSet<>();
     private volatile boolean running = true;
     private Thread pollingThread;
 
@@ -47,6 +51,20 @@ public class TelegramBotService {
             log.warn("Please set the TELEGRAM_BOT_TOKEN environment variable/property.");
             log.warn("=========================================================================");
             return;
+        }
+
+        // Parse whitelist
+        if (whitelistStr != null && !whitelistStr.trim().isEmpty()) {
+            for (String s : whitelistStr.split(",")) {
+                try {
+                    whitelist.add(Long.parseLong(s.trim()));
+                } catch (NumberFormatException e) {
+                    log.error("Invalid user ID in whitelist: {}", s);
+                }
+            }
+            log.info("Loaded {} whitelisted Telegram user IDs", whitelist.size());
+        } else {
+            log.info("Telegram whitelist is empty. All users are allowed to use the bot.");
         }
 
         log.info("Starting Telegram Bot long polling engine...");
@@ -110,8 +128,26 @@ public class TelegramBotService {
         }
     }
 
+    private boolean isUserAllowed(long userId) {
+        if (whitelist.isEmpty()) {
+            return true;
+        }
+        return whitelist.contains(userId);
+    }
+
     private void handleMessage(JsonNode message) {
         long chatId = message.path("chat").path("id").asLong();
+        long userId = message.path("from").path("id").asLong();
+
+        if (!isUserAllowed(userId)) {
+            String username = message.path("from").path("username").asText("unknown");
+            log.warn("Unauthorized access attempt: User {} (ID: {}) is not whitelisted.", username, userId);
+            sendTextMessage(chatId, "❌ <b>Доступ запрещен.</b>\n" +
+                    "Вы не находитесь в белом списке администраторов бота.\n" +
+                    "Ваш Telegram ID: <code>" + userId + "</code>\n\n" +
+                    "<i>Попросите владельца хоста добавить ваш ID в переменную TELEGRAM_WHITELIST в файле .env</i>");
+            return;
+        }
         
         // 1. Check if the message contains a video
         JsonNode video = message.path("video");
