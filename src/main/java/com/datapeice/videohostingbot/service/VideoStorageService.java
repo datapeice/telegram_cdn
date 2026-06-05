@@ -128,10 +128,12 @@ public class VideoStorageService {
                 "-profile:v", "baseline",
                 "-bf", "0",
                 "-pix_fmt", "yuv420p",
+                "-vf", "scale='min(1280,iw)':'min(720,ih)':force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2",
                 "-c:a", "aac",
                 "-ar", "44100",
                 "-ac", "2",
                 "-b:a", "128k",
+                "-b:v", "1000k",
                 "-r", "30",
                 "-movflags", "+faststart",
                 output.getAbsolutePath()
