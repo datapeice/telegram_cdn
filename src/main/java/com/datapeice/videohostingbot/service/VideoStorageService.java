@@ -132,6 +132,7 @@ public class VideoStorageService {
                 "-ar", "44100",
                 "-ac", "2",
                 "-b:a", "128k",
+                "-r", "30",
                 "-movflags", "+faststart",
                 output.getAbsolutePath()
         );
