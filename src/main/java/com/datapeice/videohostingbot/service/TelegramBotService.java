@@ -186,13 +186,30 @@ public class TelegramBotService {
         } else if (text.startsWith("http://") || text.startsWith("https://")) {
             String url = text.trim();
             String fileName = "downloaded_video.mp4";
-            if (url.contains("/")) {
-                String lastPart = url.substring(url.lastIndexOf("/") + 1);
-                if (lastPart.contains("?")) {
-                    lastPart = lastPart.substring(0, lastPart.indexOf("?"));
+            
+            // Automatically detect Google Drive sharing links and convert them to direct download links
+            if (url.contains("drive.google.com/file/d/")) {
+                int start = url.indexOf("/file/d/") + 8;
+                int end = url.indexOf("/", start);
+                if (end == -1) {
+                    end = url.indexOf("?", start);
                 }
-                if (lastPart.endsWith(".mp4") || lastPart.endsWith(".mov") || lastPart.endsWith(".avi") || lastPart.endsWith(".mkv")) {
-                    fileName = lastPart;
+                if (end == -1) {
+                    end = url.length();
+                }
+                String fileId = url.substring(start, end);
+                url = "https://drive.google.com/uc?export=download&id=" + fileId;
+                fileName = "drive_" + fileId + ".mp4";
+                log.info("Converted Google Drive sharing link to direct link: {}", url);
+            } else {
+                if (url.contains("/")) {
+                    String lastPart = url.substring(url.lastIndexOf("/") + 1);
+                    if (lastPart.contains("?")) {
+                        lastPart = lastPart.substring(0, lastPart.indexOf("?"));
+                    }
+                    if (lastPart.endsWith(".mp4") || lastPart.endsWith(".mov") || lastPart.endsWith(".avi") || lastPart.endsWith(".mkv")) {
+                        fileName = lastPart;
+                    }
                 }
             }
             processVideoUrlDownload(chatId, url, fileName);
