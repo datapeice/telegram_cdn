@@ -180,11 +180,24 @@ public class TelegramBotService {
         if (text.startsWith("/start")) {
             sendTextMessage(chatId, "<b>Привет!</b> 👋\n\n" +
                     "Я бот для хостинга видео.\n" +
-                    "Просто пришли мне любой видеоролик (как видео или файл), " +
+                    "Просто пришли мне любой видеоролик (как видео или файл) или <b>прямую ссылку на видео</b> (начиная с http/https), " +
                     "и я сделаю его доступным по прямой ссылке, оптимизированным для стриминга!\n\n" +
-                    "<i>Все видео будут автоматически подготовлены для моментального воспроизведения со звуком.</i>");
+                    "<i>Все видео будут автоматически подготовлены для моментального воспроизведения со звуком в 30 FPS.</i>");
+        } else if (text.startsWith("http://") || text.startsWith("https://")) {
+            String url = text.trim();
+            String fileName = "downloaded_video.mp4";
+            if (url.contains("/")) {
+                String lastPart = url.substring(url.lastIndexOf("/") + 1);
+                if (lastPart.contains("?")) {
+                    lastPart = lastPart.substring(0, lastPart.indexOf("?"));
+                }
+                if (lastPart.endsWith(".mp4") || lastPart.endsWith(".mov") || lastPart.endsWith(".avi") || lastPart.endsWith(".mkv")) {
+                    fileName = lastPart;
+                }
+            }
+            processVideoUrlDownload(chatId, url, fileName);
         } else {
-            sendTextMessage(chatId, "Пришли мне видеоролик, чтобы загрузить его на хостинг. 🎥");
+            sendTextMessage(chatId, "Пришли мне видеоролик или прямую ссылку на видео, чтобы загрузить его на хостинг. 🎥");
         }
     }
 
@@ -284,6 +297,71 @@ public class TelegramBotService {
         int exp = (int) (Math.log(bytes) / Math.log(1024));
         char pre = "KMGTPE".charAt(exp - 1);
         return String.format("%.2f %sB", bytes / Math.pow(1024, exp), pre);
+    }
+
+    private void processVideoUrlDownload(long chatId, String downloadUrl, String fileName) {
+        sendTextMessage(chatId, "⏳ Ссылка получена! Скачиваю видео по прямой ссылке и оптимизирую для стриминга...");
+
+        try {
+            // 1. Download to temporary file
+            File tempFile = File.createTempFile("url_download_", ".tmp");
+            tempFile.deleteOnExit();
+
+            log.info("Downloading file from URL: {}", downloadUrl);
+            URLConnection connection = java.net.URI.create(downloadUrl).toURL().openConnection();
+            connection.setConnectTimeout(15000);
+            connection.setReadTimeout(60000);
+
+            // Use a unique fileId derived from the URL to avoid duplicating the same URL download
+            String fileId = "url_" + java.util.UUID.nameUUIDFromBytes(downloadUrl.getBytes()).toString();
+
+            // Check if already processed
+            Optional<Video> existingVideo = videoRepository.findByTelegramFileId(fileId);
+            if (existingVideo.isPresent()) {
+                Video video = existingVideo.get();
+                String responseText = "✅ <b>Это видео уже загружено на хостинг!</b>\n\n" +
+                        "<b>Файл:</b> <code>" + escapeHtml(video.getOriginalFilename()) + "</code>\n" +
+                        "<b>Размер:</b> " + formatSize(video.getFileSize()) + "\n\n" +
+                        "🔗 <b>Прямая ссылка:</b>\n<code>" + video.getDirectUrl() + "</code>\n\n" +
+                        "🎮 <b>Команда для запуска:</b>\n" +
+                        "<code>/camera video @a " + video.getDirectUrl() + "</code>\n\n" +
+                        "<i>Вы можете управлять этим файлом через веб-панель.</i>";
+                sendTextMessage(chatId, responseText);
+                return;
+            }
+
+            try (InputStream is = connection.getInputStream();
+                 FileOutputStream fos = new FileOutputStream(tempFile)) {
+                byte[] buffer = new byte[8192];
+                int read;
+                while ((read = is.read(buffer)) != -1) {
+                    fos.write(buffer, 0, read);
+                }
+            }
+
+            // 2. Process video (transcode via FFmpeg & save to DB)
+            var video = videoStorageService.store(tempFile, fileName, fileId);
+
+            // 3. Cleanup temp file
+            if (tempFile.exists()) {
+                tempFile.delete();
+            }
+
+            // 4. Send success response
+            String responseText = "✅ <b>Видео успешно загружено на хостинг!</b>\n\n" +
+                    "<b>Файл:</b> <code>" + escapeHtml(video.getOriginalFilename()) + "</code>\n" +
+                    "<b>Размер:</b> " + formatSize(video.getFileSize()) + "\n\n" +
+                    "🔗 <b>Прямая ссылка:</b>\n<code>" + video.getDirectUrl() + "</code>\n\n" +
+                    "🎮 <b>Команда для запуска:</b>\n" +
+                    "<code>/camera video @a " + video.getDirectUrl() + "</code>\n\n" +
+                    "<i>Команда скопируется при нажатии на неё. Вы можете управлять файлами через веб-панель.</i>";
+
+            sendTextMessage(chatId, responseText);
+
+        } catch (Exception e) {
+            log.error("Failed to process URL download", e);
+            sendTextMessage(chatId, "❌ <b>Ошибка при загрузке по ссылке:</b>\n" + escapeHtml(e.getMessage()));
+        }
     }
 
     private String escapeHtml(String input) {
