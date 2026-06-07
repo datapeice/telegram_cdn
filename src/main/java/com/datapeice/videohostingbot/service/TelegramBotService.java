@@ -182,25 +182,45 @@ public class TelegramBotService {
                     "Я бот для хостинга видео.\n" +
                     "Просто пришли мне любой видеоролик (как видео или файл) или <b>прямую ссылку на видео</b> (начиная с http/https), " +
                     "и я сделаю его доступным по прямой ссылке, оптимизированным для стриминга!\n\n" +
-                    "<i>Все видео будут автоматически подготовлены для моментального воспроизведения со звуком в 30 FPS.</i>");
+                    "<i>Все видео будут автоматически подготовлены для моментального воспроизведения со звуком в 720p 30 FPS.</i>\n\n" +
+                    "<b>Доступные команды:</b>\n" +
+                    "📋 /list — Показать список всех загруженных видео\n" +
+                    "❌ /delete &lt;id&gt; — Удалить видео по его ID/имени файла");
+        } else if (text.startsWith("/list")) {
+            handleListCommand(chatId);
+        } else if (text.startsWith("/delete") || text.startsWith("/del")) {
+            handleDeleteCommand(chatId, text);
         } else if (text.startsWith("http://") || text.startsWith("https://")) {
             String url = text.trim();
             String fileName = "downloaded_video.mp4";
             
             // Automatically detect Google Drive sharing links and convert them to direct download links
-            if (url.contains("drive.google.com/file/d/")) {
-                int start = url.indexOf("/file/d/") + 8;
-                int end = url.indexOf("/", start);
-                if (end == -1) {
-                    end = url.indexOf("?", start);
+            if (url.contains("drive.google.com")) {
+                String fileId = null;
+                if (url.contains("/file/d/")) {
+                    int start = url.indexOf("/file/d/") + 8;
+                    int end = url.indexOf("/", start);
+                    if (end == -1) {
+                        end = url.indexOf("?", start);
+                    }
+                    if (end == -1) {
+                        end = url.length();
+                    }
+                    fileId = url.substring(start, end);
+                } else if (url.contains("id=")) {
+                    int start = url.indexOf("id=") + 3;
+                    int end = url.indexOf("&", start);
+                    if (end == -1) {
+                        end = url.length();
+                    }
+                    fileId = url.substring(start, end);
                 }
-                if (end == -1) {
-                    end = url.length();
+                
+                if (fileId != null) {
+                    url = "https://drive.usercontent.google.com/download?id=" + fileId + "&export=download&confirm=t";
+                    fileName = "drive_" + fileId + ".mp4";
+                    log.info("Converted Google Drive sharing link to direct link: {}", url);
                 }
-                String fileId = url.substring(start, end);
-                url = "https://drive.google.com/uc?export=download&id=" + fileId;
-                fileName = "drive_" + fileId + ".mp4";
-                log.info("Converted Google Drive sharing link to direct link: {}", url);
             } else {
                 if (url.contains("/")) {
                     String lastPart = url.substring(url.lastIndexOf("/") + 1);
@@ -223,15 +243,24 @@ public class TelegramBotService {
         Optional<Video> existingVideo = videoRepository.findByTelegramFileId(fileId);
         if (existingVideo.isPresent()) {
             Video video = existingVideo.get();
-            String responseText = "✅ <b>Это видео уже загружено на хостинг!</b>\n\n" +
-                    "<b>Файл:</b> <code>" + escapeHtml(video.getOriginalFilename()) + "</code>\n" +
-                    "<b>Размер:</b> " + formatSize(video.getFileSize()) + "\n\n" +
-                    "🔗 <b>Прямая ссылка:</b>\n<code>" + video.getDirectUrl() + "</code>\n\n" +
-                    "🎮 <b>Команда для запуска:</b>\n" +
-                    "<code>/camera video @a " + video.getDirectUrl() + "</code>\n\n" +
-                    "<i>Вы можете управлять этим файлом через веб-панель.</i>";
-            sendTextMessage(chatId, responseText);
-            return;
+            if (video.getFileSize() < 50 * 1024) {
+                log.warn("Found existing uploaded video record but it is extremely small ({} bytes). Deleting it and re-uploading...", video.getFileSize());
+                try {
+                    videoStorageService.delete(video.getId());
+                } catch (Exception e) {
+                    log.error("Failed to delete small video record: {}", e.getMessage());
+                }
+            } else {
+                String responseText = "✅ <b>Это видео уже загружено на хостинг!</b>\n\n" +
+                        "<b>Файл:</b> <code>" + escapeHtml(video.getOriginalFilename()) + "</code>\n" +
+                        "<b>Размер:</b> " + formatSize(video.getFileSize()) + "\n\n" +
+                        "🔗 <b>Прямая ссылка:</b>\n<code>" + video.getDirectUrl() + "</code>\n\n" +
+                        "🎮 <b>Команда для запуска:</b>\n" +
+                        "<code>/camera video @a " + video.getDirectUrl() + "</code>\n\n" +
+                        "<i>Вы можете управлять этим файлом через веб-панель.</i>";
+                sendTextMessage(chatId, responseText);
+                return;
+            }
         }
 
         sendTextMessage(chatId, "⏳ Видео получено! Скачиваю и оптимизирую для стриминга...");
@@ -336,15 +365,24 @@ public class TelegramBotService {
             Optional<Video> existingVideo = videoRepository.findByTelegramFileId(fileId);
             if (existingVideo.isPresent()) {
                 Video video = existingVideo.get();
-                String responseText = "✅ <b>Это видео уже загружено на хостинг!</b>\n\n" +
-                        "<b>Файл:</b> <code>" + escapeHtml(video.getOriginalFilename()) + "</code>\n" +
-                        "<b>Размер:</b> " + formatSize(video.getFileSize()) + "\n\n" +
-                        "🔗 <b>Прямая ссылка:</b>\n<code>" + video.getDirectUrl() + "</code>\n\n" +
-                        "🎮 <b>Команда для запуска:</b>\n" +
-                        "<code>/camera video @a " + video.getDirectUrl() + "</code>\n\n" +
-                        "<i>Вы можете управлять этим файлом через веб-панель.</i>";
-                sendTextMessage(chatId, responseText);
-                return;
+                if (video.getFileSize() < 50 * 1024) {
+                    log.warn("Found existing downloaded video record but it is extremely small ({} bytes). Deleting it and re-downloading...", video.getFileSize());
+                    try {
+                        videoStorageService.delete(video.getId());
+                    } catch (Exception e) {
+                        log.error("Failed to delete small video record: {}", e.getMessage());
+                    }
+                } else {
+                    String responseText = "✅ <b>Это видео уже загружено на хостинг!</b>\n\n" +
+                            "<b>Файл:</b> <code>" + escapeHtml(video.getOriginalFilename()) + "</code>\n" +
+                            "<b>Размер:</b> " + formatSize(video.getFileSize()) + "\n\n" +
+                            "🔗 <b>Прямая ссылка:</b>\n<code>" + video.getDirectUrl() + "</code>\n\n" +
+                            "🎮 <b>Команда для запуска:</b>\n" +
+                            "<code>/camera video @a " + video.getDirectUrl() + "</code>\n\n" +
+                            "<i>Вы можете управлять этим файлом через веб-панель.</i>";
+                    sendTextMessage(chatId, responseText);
+                    return;
+                }
             }
 
             try (InputStream is = connection.getInputStream();
@@ -378,6 +416,93 @@ public class TelegramBotService {
         } catch (Exception e) {
             log.error("Failed to process URL download", e);
             sendTextMessage(chatId, "❌ <b>Ошибка при загрузке по ссылке:</b>\n" + escapeHtml(e.getMessage()));
+        }
+    }
+
+    private void handleListCommand(long chatId) {
+        try {
+            java.util.List<Video> videos = videoRepository.findAll();
+            if (videos.isEmpty()) {
+                sendTextMessage(chatId, "📭 <b>База пуста.</b> Видео на хостинге пока нет.");
+                return;
+            }
+
+            StringBuilder sb = new StringBuilder();
+            sb.append("🗄 <b>База загруженных видео (Всего: ").append(videos.size()).append("):</b>\n\n");
+
+            // Sort by creation date descending (latest first)
+            videos.sort((v1, v2) -> {
+                if (v1.getCreatedAt() == null || v2.getCreatedAt() == null) return 0;
+                return v2.getCreatedAt().compareTo(v1.getCreatedAt());
+            });
+
+            int count = 0;
+            for (Video video : videos) {
+                if (count >= 30) {
+                    sb.append("<i>...и еще ").append(videos.size() - 30).append(" видео (посмотрите их на веб-панели)</i>\n");
+                    break;
+                }
+
+                String cleanFilename = video.getStoredFilename();
+                String deleteArg = cleanFilename.endsWith(".mp4") ? cleanFilename.substring(0, cleanFilename.length() - 4) : cleanFilename;
+
+                sb.append(count + 1).append(". 🎥 <b>").append(escapeHtml(video.getOriginalFilename())).append("</b>\n");
+                sb.append("• Размер: ").append(formatSize(video.getFileSize())).append("\n");
+                sb.append("• Ссылка: <a href=\"").append(video.getDirectUrl()).append("\">открыть</a>\n");
+                sb.append("• Удалить: <code>/delete ").append(deleteArg).append("</code>\n\n");
+                count++;
+            }
+
+            sendTextMessage(chatId, sb.toString());
+        } catch (Exception e) {
+            log.error("Failed to list videos", e);
+            sendTextMessage(chatId, "❌ <b>Ошибка при получении списка видео:</b>\n" + escapeHtml(e.getMessage()));
+        }
+    }
+
+    private void handleDeleteCommand(long chatId, String text) {
+        String[] parts = text.split("\\s+");
+        if (parts.length < 2) {
+            sendTextMessage(chatId, "❌ <b>Использование:</b>\n<code>/delete &lt;имя_файла_или_UUID&gt;</code>\n\n<i>Пример: /delete bccd7426-735b-4171-85ca-3752929f6c1f</i>");
+            return;
+        }
+
+        String target = parts[1].trim();
+        if (target.isEmpty()) {
+            sendTextMessage(chatId, "❌ Укажите имя файла или UUID для удаления.");
+            return;
+        }
+
+        try {
+            Optional<Video> videoOpt = Optional.empty();
+
+            // 1. Try to parse as UUID
+            try {
+                java.util.UUID uuid = java.util.UUID.fromString(target);
+                videoOpt = videoRepository.findById(uuid);
+            } catch (IllegalArgumentException ignored) {}
+
+            // 2. If not found by UUID, try to search by storedFilename
+            if (videoOpt.isEmpty()) {
+                videoOpt = videoRepository.findByStoredFilename(target);
+            }
+
+            // 3. Try with .mp4 extension appended
+            if (videoOpt.isEmpty() && !target.endsWith(".mp4")) {
+                videoOpt = videoRepository.findByStoredFilename(target + ".mp4");
+            }
+
+            if (videoOpt.isEmpty()) {
+                sendTextMessage(chatId, "❌ <b>Видео не найдено:</b> <code>" + escapeHtml(target) + "</code>\nПроверьте имя файла с помощью команды /list");
+                return;
+            }
+
+            Video video = videoOpt.get();
+            videoStorageService.delete(video.getId());
+            sendTextMessage(chatId, "✅ <b>Видео успешно удалено!</b>\n\n<b>Файл:</b> <code>" + escapeHtml(video.getOriginalFilename()) + "</code>\n<b>Stored ID:</b> <code>" + video.getStoredFilename() + "</code>");
+        } catch (Exception e) {
+            log.error("Failed to delete video via command: {}", target, e);
+            sendTextMessage(chatId, "❌ <b>Ошибка при удалении видео:</b>\n" + escapeHtml(e.getMessage()));
         }
     }
 
