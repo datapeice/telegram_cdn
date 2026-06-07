@@ -251,13 +251,11 @@ public class TelegramBotService {
                     log.error("Failed to delete small video record: {}", e.getMessage());
                 }
             } else {
-                String responseText = "✅ <b>Это видео уже загружено на хостинг!</b>\n\n" +
-                        "<b>Файл:</b> <code>" + escapeHtml(video.getOriginalFilename()) + "</code>\n" +
-                        "<b>Размер:</b> " + formatSize(video.getFileSize()) + "\n\n" +
-                        "🔗 <b>Прямая ссылка:</b>\n<code>" + video.getDirectUrl() + "</code>\n\n" +
-                        "🎮 <b>Команда для запуска:</b>\n" +
-                        "<code>/camera video @a " + video.getDirectUrl() + "</code>\n\n" +
-                        "<i>Вы можете управлять этим файлом через веб-панель.</i>";
+                String responseText = buildSuccessMessage(
+                        "✅ <b>Это видео уже загружено на хостинг!</b>",
+                        video,
+                        ""
+                );
                 sendTextMessage(chatId, responseText);
                 return;
             }
@@ -308,13 +306,11 @@ public class TelegramBotService {
             }
 
             // 5. Send success response with direct URL and copyable command
-            String responseText = "✅ <b>Видео успешно загружено на хостинг!</b>\n\n" +
-                    "<b>Файл:</b> <code>" + escapeHtml(video.getOriginalFilename()) + "</code>\n" +
-                    "<b>Размер:</b> " + formatSize(video.getFileSize()) + "\n\n" +
-                    "🔗 <b>Прямая ссылка:</b>\n<code>" + video.getDirectUrl() + "</code>\n\n" +
-                    "🎮 <b>Команда для запуска:</b>\n" +
-                    "<code>/camera video @a " + video.getDirectUrl() + "</code>\n\n" +
-                    "<i>Команда скопируется при нажатии на неё (на телефоне) или при выделении. Вы можете управлять файлами через веб-панель.</i>";
+            String responseText = buildSuccessMessage(
+                    "✅ <b>Видео успешно загружено на хостинг!</b>",
+                    video,
+                    ""
+            );
 
             sendTextMessage(chatId, responseText);
 
@@ -322,6 +318,24 @@ public class TelegramBotService {
             log.error("Failed to process video upload", e);
             sendTextMessage(chatId, "❌ <b>Ошибка при обработке видео:</b>\n" + escapeHtml(e.getMessage()));
         }
+    }
+
+    private String buildSuccessMessage(String header, Video video, String footer) {
+        String scheduledTime = java.time.format.DateTimeFormatter.ISO_INSTANT.format(
+                java.time.Instant.now().plusSeconds(10)
+        );
+        String msg = header + "\n\n" +
+                "<b>Файл:</b> <code>" + escapeHtml(video.getOriginalFilename()) + "</code>\n" +
+                "<b>Размер:</b> " + formatSize(video.getFileSize()) + "\n\n" +
+                "🔗 <b>Прямая ссылка:</b>\n<code>" + video.getDirectUrl() + "</code>\n\n" +
+                "🎮 <b>Команда для запуска:</b>\n" +
+                "<code>/camera video @a \"" + video.getDirectUrl() + "\"</code>\n\n" +
+                "🕒 <b>Запуск по расписанию (текущее UTC + 10 сек):</b>\n" +
+                "<code>/camera video @a \"" + video.getDirectUrl() + "\" \"" + scheduledTime + "\"</code>";
+        if (footer != null && !footer.trim().isEmpty()) {
+            msg += "\n\n" + footer;
+        }
+        return msg;
     }
 
     private void sendTextMessage(long chatId, String text) {
@@ -373,13 +387,11 @@ public class TelegramBotService {
                         log.error("Failed to delete small video record: {}", e.getMessage());
                     }
                 } else {
-                    String responseText = "✅ <b>Это видео уже загружено на хостинг!</b>\n\n" +
-                            "<b>Файл:</b> <code>" + escapeHtml(video.getOriginalFilename()) + "</code>\n" +
-                            "<b>Размер:</b> " + formatSize(video.getFileSize()) + "\n\n" +
-                            "🔗 <b>Прямая ссылка:</b>\n<code>" + video.getDirectUrl() + "</code>\n\n" +
-                            "🎮 <b>Команда для запуска:</b>\n" +
-                            "<code>/camera video @a " + video.getDirectUrl() + "</code>\n\n" +
-                            "<i>Вы можете управлять этим файлом через веб-панель.</i>";
+                    String responseText = buildSuccessMessage(
+                            "✅ <b>Это видео уже загружено на хостинг!</b>",
+                            video,
+                            ""
+                    );
                     sendTextMessage(chatId, responseText);
                     return;
                 }
@@ -403,13 +415,11 @@ public class TelegramBotService {
             }
 
             // 4. Send success response
-            String responseText = "✅ <b>Видео успешно загружено на хостинг!</b>\n\n" +
-                    "<b>Файл:</b> <code>" + escapeHtml(video.getOriginalFilename()) + "</code>\n" +
-                    "<b>Размер:</b> " + formatSize(video.getFileSize()) + "\n\n" +
-                    "🔗 <b>Прямая ссылка:</b>\n<code>" + video.getDirectUrl() + "</code>\n\n" +
-                    "🎮 <b>Команда для запуска:</b>\n" +
-                    "<code>/camera video @a " + video.getDirectUrl() + "</code>\n\n" +
-                    "<i>Команда скопируется при нажатии на неё. Вы можете управлять файлами через веб-панель.</i>";
+            String responseText = buildSuccessMessage(
+                    "✅ <b>Видео успешно загружено на хостинг!</b>",
+                    video,
+                    ""
+            );
 
             sendTextMessage(chatId, responseText);
 
